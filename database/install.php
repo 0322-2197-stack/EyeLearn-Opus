@@ -1,8 +1,9 @@
 <?php
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
+require_once __DIR__ . '/../config.php';
+$conn = getDBConnection();
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (!$conn) {
+    die("Connection failed");
 }
 
 $sql = "CREATE TABLE IF NOT EXISTS user_module_progress (

@@ -87,14 +87,29 @@ try {
     
     $record_id = $conn->lastInsertId();
     
-    // Also update user progress for module completion tracking
+    // // Also update user progress for module completion tracking
+    // if (isset($data['module_id']) && $data['total_time'] > 0) {
+    //     $progress_sql = "
+    //         INSERT INTO user_progress (user_id, module_id, time_spent, last_accessed)
+    //         VALUES (?, ?, ?, NOW())
+    //         ON DUPLICATE KEY UPDATE
+    //         time_spent = time_spent + VALUES(time_spent),
+    //         last_accessed = VALUES(last_accessed)
+    //     ";
+        
+    //     $progress_stmt = $conn->prepare($progress_sql);
+    //     $progress_stmt->execute([
+    //         $data['user_id'],
+    //         $data['module_id'],
+    //         $total_time_seconds  // Also in seconds for consistency
+    //     ]);
+    // }
+    
+      // Also update user progress for module completion tracking
     if (isset($data['module_id']) && $data['total_time'] > 0) {
         $progress_sql = "
-            INSERT INTO user_progress (user_id, module_id, time_spent, last_accessed)
+            INSERT INTO user_progress (user_id, module_id, completion_percentage, last_accessed)
             VALUES (?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE
-            time_spent = time_spent + VALUES(time_spent),
-            last_accessed = VALUES(last_accessed)
         ";
         
         $progress_stmt = $conn->prepare($progress_sql);
@@ -104,7 +119,6 @@ try {
             $total_time_seconds  // Also in seconds for consistency
         ]);
     }
-    
     echo json_encode([
         'success' => true,
         'message' => "Eye tracking data saved successfully",

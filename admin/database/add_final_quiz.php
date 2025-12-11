@@ -1,12 +1,13 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config.php';
+
 if (!isset($_SESSION['user_id'])) {
     die('Unauthorized access');
 }
 
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+$conn = getDBConnection();
+if (!$conn) {
+    die("Connection failed");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

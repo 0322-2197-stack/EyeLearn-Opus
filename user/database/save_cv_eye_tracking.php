@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config.php';
 header('Content-Type: application/json');
 
 // Allow CORS for the Python service
@@ -21,9 +21,9 @@ if (isset($_SESSION['user_id'])) {
     $user_id = $_SESSION['user_id'];
 }
 
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
+// Database connection from centralized config
+$conn = getDBConnection();
+if (!$conn) {
     echo json_encode(['success' => false, 'error' => 'Database connection failed']);
     exit();
 }

@@ -48,24 +48,58 @@ class CVEyeTrackingSystem {
         this.LEFT_IRIS = [474, 475, 476, 477];
         this.RIGHT_IRIS = [469, 470, 471, 472];
         
-        // Nose tip for head pose estimation
+        // Head pose landmarks for detecting turned head
         this.NOSE_TIP = 1;
+        this.NOSE_BRIDGE = 6;
+        this.LEFT_CHEEK = 234;
+        this.RIGHT_CHEEK = 454;
+        this.FOREHEAD = 10;
+        this.CHIN = 152;
         
-        // Focus detection thresholds
+        // Additional eye landmarks for EAR (Eye Aspect Ratio)
+        this.LEFT_EYE_VERTICAL = [386, 374]; // Top and bottom of left eye
+        this.RIGHT_EYE_VERTICAL = [159, 145]; // Top and bottom of right eye
+        this.LEFT_EYE_HORIZONTAL = [362, 263]; // Left and right corners
+        this.RIGHT_EYE_HORIZONTAL = [33, 133]; // Left and right corners
+        
+        // Focus detection thresholds - TIGHTENED for better unfocus detection
         this.focusThresholds = {
-            horizontalMin: 0.25,  // Left boundary (0-1 normalized)
-            horizontalMax: 0.75,  // Right boundary
-            verticalMin: 0.20,    // Top boundary
-            verticalMax: 0.80     // Bottom boundary
+            horizontalMin: 0.30,  // Left boundary (0-1 normalized) - tighter
+            horizontalMax: 0.70,  // Right boundary - tighter
+            verticalMin: 0.25,    // Top boundary - tighter
+            verticalMax: 0.75     // Bottom boundary - tighter
+        };
+        
+        // Head pose thresholds
+        this.headPoseThresholds = {
+            maxYawAngle: 25,      // Max degrees head can turn left/right
+            maxPitchAngle: 20,    // Max degrees head can tilt up/down
+            maxRollAngle: 25      // Max degrees head can tilt sideways
+        };
+        
+        // Eye aspect ratio for blink/closed eye detection
+        this.earThresholds = {
+            blinkThreshold: 0.18,     // Below this = eyes closed
+            drowsyThreshold: 0.22,    // Below this = drowsy/squinting
+            closedFramesForUnfocus: 10 // Frames with closed eyes = unfocused
         };
         
         // Tracking state
         this.isFocused = false;
         this.faceDetected = false;
         this.gazeDirection = { x: 0.5, y: 0.5 };
+        this.headPose = { yaw: 0, pitch: 0, roll: 0 };
+        this.eyeAspectRatio = { left: 0.3, right: 0.3, average: 0.3 };
         this.consecutiveUnfocusedFrames = 0;
         this.consecutiveFocusedFrames = 0;
-        this.focusChangeThreshold = 5; // Frames needed to change focus state
+        this.consecutiveClosedEyeFrames = 0;
+        this.focusChangeThreshold = 5;        // Frames needed to become focused
+        this.unfocusChangeThreshold = 3;      // Frames needed to become unfocused (faster reaction)
+        
+        // Gaze history for velocity/movement detection
+        this.gazeHistory = [];
+        this.gazeHistoryMaxLength = 5;
+        this.rapidMovementThreshold = 0.15;   // Gaze change per frame indicating looking away
         
         // Enhanced timer system
         this.timers = {
@@ -149,36 +183,49 @@ class CVEyeTrackingSystem {
     }
     
     async loadMLModels() {
-        console.log('🧠 Loading TensorFlow.js and FaceMesh model...');
+        console.log('🧠 Loading MediaPipe FaceMesh model...');
         
         try {
-            // Wait for TensorFlow.js to be ready
-            if (typeof tf === 'undefined') {
-                console.log('⏳ Waiting for TensorFlow.js to load...');
-                await this.waitForTensorFlow();
-            }
-            
-            // Wait for FaceMesh to be ready
-            if (typeof faceLandmarksDetection === 'undefined') {
-                console.log('⏳ Waiting for FaceMesh to load...');
+            // Wait for MediaPipe FaceMesh to be ready
+            if (typeof FaceMesh === 'undefined') {
+                console.log('⏳ Waiting for MediaPipe FaceMesh to load...');
                 await this.waitForFaceMesh();
             }
             
-            console.log('✅ TensorFlow.js loaded, version:', tf.version.tfjs);
+            console.log('✅ MediaPipe FaceMesh library loaded');
             
-            // Create the FaceMesh detector
-            const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-            const detectorConfig = {
-                runtime: 'tfjs',
-                refineLandmarks: true, // Enable iris detection
-                maxFaces: 1
-            };
+            // Create the FaceMesh instance
+            this.faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
             
-            console.log('🔧 Creating FaceMesh detector...');
-            this.detector = await faceLandmarksDetection.createDetector(model, detectorConfig);
+            // Configure FaceMesh
+            this.faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true, // Enable iris detection (478 landmarks)
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            // Set up the results callback
+            this.faceMesh.onResults((results) => {
+                this.onFaceMeshResults(results);
+            });
+            
+            // Initialize the model by sending a blank frame
+            console.log('🔧 Initializing FaceMesh model...');
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 640;
+            tempCanvas.height = 480;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = '#000';
+            tempCtx.fillRect(0, 0, 640, 480);
+            await this.faceMesh.send({ image: tempCanvas });
+            
             this.detectorReady = true;
-            
-            console.log('✅ FaceMesh detector ready!');
+            console.log('✅ MediaPipe FaceMesh ready!');
             return true;
         } catch (error) {
             console.error('❌ Error loading ML models:', error);
@@ -187,16 +234,16 @@ class CVEyeTrackingSystem {
         }
     }
     
-    waitForTensorFlow() {
+    waitForFaceMesh() {
         return new Promise((resolve, reject) => {
             let attempts = 0;
-            const maxAttempts = 50; // 5 seconds max
+            const maxAttempts = 100; // 10 seconds max
             
             const check = () => {
-                if (typeof tf !== 'undefined') {
+                if (typeof FaceMesh !== 'undefined') {
                     resolve();
                 } else if (attempts >= maxAttempts) {
-                    reject(new Error('TensorFlow.js did not load in time'));
+                    reject(new Error('MediaPipe FaceMesh did not load in time'));
                 } else {
                     attempts++;
                     setTimeout(check, 100);
@@ -206,23 +253,33 @@ class CVEyeTrackingSystem {
         });
     }
     
-    waitForFaceMesh() {
-        return new Promise((resolve, reject) => {
-            let attempts = 0;
-            const maxAttempts = 50; // 5 seconds max
+    // MediaPipe FaceMesh results callback
+    onFaceMeshResults(results) {
+        if (!this.outputCtx) return;
+        
+        // Clear and draw video frame
+        this.outputCtx.save();
+        this.outputCtx.clearRect(0, 0, this.outputCanvas.width, this.outputCanvas.height);
+        this.outputCtx.drawImage(results.image, 0, 0, this.outputCanvas.width, this.outputCanvas.height);
+        
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+            this.faceDetected = true;
             
-            const check = () => {
-                if (typeof faceLandmarksDetection !== 'undefined') {
-                    resolve();
-                } else if (attempts >= maxAttempts) {
-                    reject(new Error('FaceMesh did not load in time'));
-                } else {
-                    attempts++;
-                    setTimeout(check, 100);
-                }
-            };
-            check();
-        });
+            // Process eye landmarks and determine focus
+            this.processEyeLandmarksFromMediaPipe(landmarks);
+            
+            // Draw eye visualization
+            this.drawEyeVisualization(landmarks);
+        } else {
+            this.faceDetected = false;
+            this.handleNoFaceDetected();
+        }
+        
+        this.outputCtx.restore();
+        
+        // Update the video display
+        this.updateVideoDisplay();
     }
     
     async initWebcam() {
@@ -280,7 +337,7 @@ class CVEyeTrackingSystem {
         this.isTracking = true;
         console.log('🎯 Starting client-side eye tracking...');
         
-        // Start the tracking loop
+        // Start the tracking loop using MediaPipe's native API
         this.trackingInterval = setInterval(async () => {
             await this.processFrame();
         }, 100); // 10 FPS - good balance between accuracy and performance
@@ -290,39 +347,14 @@ class CVEyeTrackingSystem {
     }
     
     async processFrame() {
-        if (!this.isTracking || !this.video || !this.detector || this.isTransitioning) {
+        if (!this.isTracking || !this.video || !this.faceMesh || this.isTransitioning) {
             return;
         }
         
         try {
-            // Draw current video frame to canvas
-            this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-            
-            // Get face predictions
-            const faces = await this.detector.estimateFaces(this.video, {
-                flipHorizontal: false
-            });
-            
-            // Draw annotated frame to output canvas
-            this.outputCtx.drawImage(this.video, 0, 0, this.outputCanvas.width, this.outputCanvas.height);
-            
-            if (faces.length > 0) {
-                const face = faces[0];
-                this.faceDetected = true;
-                
-                // Process eye landmarks and determine focus
-                this.processEyeLandmarks(face);
-                
-                // Draw annotations on output canvas
-                this.drawAnnotations(face);
-            } else {
-                this.faceDetected = false;
-                this.handleNoFaceDetected();
-            }
-            
-            // Update the video feed display
-            this.updateVideoDisplay();
-            
+            // Send frame to MediaPipe FaceMesh for processing
+            // Results are handled in onFaceMeshResults callback
+            await this.faceMesh.send({ image: this.video });
         } catch (error) {
             // Silently handle occasional processing errors
             if (Math.random() < 0.01) {
@@ -331,6 +363,170 @@ class CVEyeTrackingSystem {
         }
     }
     
+    // Process landmarks from MediaPipe native format (normalized 0-1 coordinates)
+    processEyeLandmarksFromMediaPipe(landmarks) {
+        if (!landmarks || landmarks.length < 478) {
+            return; // Need full face mesh with iris landmarks
+        }
+        
+        try {
+            // MediaPipe returns normalized coordinates (0-1)
+            // Get iris centers
+            const leftIrisCenter = this.getIrisCenterFromMediaPipe(landmarks, this.LEFT_IRIS);
+            const rightIrisCenter = this.getIrisCenterFromMediaPipe(landmarks, this.RIGHT_IRIS);
+            
+            // Get eye boundaries for ratio calculation
+            const leftEyeBounds = this.getEyeBoundsFromMediaPipe(landmarks, this.LEFT_EYE);
+            const rightEyeBounds = this.getEyeBoundsFromMediaPipe(landmarks, this.RIGHT_EYE);
+            
+            if (leftIrisCenter && rightIrisCenter && leftEyeBounds && rightEyeBounds) {
+                // Calculate normalized gaze position within eye bounds
+                const leftGazeX = (leftIrisCenter.x - leftEyeBounds.minX) / (leftEyeBounds.maxX - leftEyeBounds.minX);
+                const rightGazeX = (rightIrisCenter.x - rightEyeBounds.minX) / (rightEyeBounds.maxX - rightEyeBounds.minX);
+                
+                const leftGazeY = (leftIrisCenter.y - leftEyeBounds.minY) / (leftEyeBounds.maxY - leftEyeBounds.minY);
+                const rightGazeY = (rightIrisCenter.y - rightEyeBounds.minY) / (rightEyeBounds.maxY - rightEyeBounds.minY);
+                
+                // Average both eyes
+                this.gazeDirection = {
+                    x: (leftGazeX + rightGazeX) / 2,
+                    y: (leftGazeY + rightGazeY) / 2
+                };
+                
+                // Clamp to valid range
+                this.gazeDirection.x = Math.max(0, Math.min(1, this.gazeDirection.x));
+                this.gazeDirection.y = Math.max(0, Math.min(1, this.gazeDirection.y));
+                
+                // Determine if user is focused (looking at screen)
+                const isLookingAtScreen = this.isGazeFocused();
+                
+                // Use hysteresis to prevent flickering
+                if (isLookingAtScreen) {
+                    this.consecutiveFocusedFrames++;
+                    this.consecutiveUnfocusedFrames = 0;
+                    
+                    if (this.consecutiveFocusedFrames >= this.focusChangeThreshold && !this.isFocused) {
+                        this.isFocused = true;
+                        this.handleFocusChange(true);
+                    }
+                } else {
+                    this.consecutiveUnfocusedFrames++;
+                    this.consecutiveFocusedFrames = 0;
+                    
+                    if (this.consecutiveUnfocusedFrames >= this.focusChangeThreshold && this.isFocused) {
+                        this.isFocused = false;
+                        this.handleFocusChange(false);
+                    }
+                }
+            }
+        } catch (error) {
+            console.debug('Error processing eye landmarks:', error.message);
+        }
+    }
+    
+    getIrisCenterFromMediaPipe(landmarks, irisIndices) {
+        let sumX = 0, sumY = 0, count = 0;
+        
+        for (const idx of irisIndices) {
+            if (landmarks[idx]) {
+                sumX += landmarks[idx].x;
+                sumY += landmarks[idx].y;
+                count++;
+            }
+        }
+        
+        if (count === 0) return null;
+        
+        return {
+            x: sumX / count,
+            y: sumY / count
+        };
+    }
+    
+    getEyeBoundsFromMediaPipe(landmarks, eyeIndices) {
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        
+        for (const idx of eyeIndices) {
+            if (landmarks[idx]) {
+                minX = Math.min(minX, landmarks[idx].x);
+                maxX = Math.max(maxX, landmarks[idx].x);
+                minY = Math.min(minY, landmarks[idx].y);
+                maxY = Math.max(maxY, landmarks[idx].y);
+            }
+        }
+        
+        if (minX === Infinity) return null;
+        
+        return { minX, maxX, minY, maxY };
+    }
+    
+    // Draw eye visualization on the output canvas
+    drawEyeVisualization(landmarks) {
+        if (!this.outputCtx) return;
+        
+        const w = this.outputCanvas.width;
+        const h = this.outputCanvas.height;
+        
+        // Draw eye outlines
+        this.outputCtx.strokeStyle = this.isFocused ? '#00ff00' : '#ff0000';
+        this.outputCtx.lineWidth = 2;
+        
+        // Draw left eye
+        this.outputCtx.beginPath();
+        for (let i = 0; i < this.LEFT_EYE.length; i++) {
+            const pt = landmarks[this.LEFT_EYE[i]];
+            if (i === 0) {
+                this.outputCtx.moveTo(pt.x * w, pt.y * h);
+            } else {
+                this.outputCtx.lineTo(pt.x * w, pt.y * h);
+            }
+        }
+        this.outputCtx.closePath();
+        this.outputCtx.stroke();
+        
+        // Draw right eye
+        this.outputCtx.beginPath();
+        for (let i = 0; i < this.RIGHT_EYE.length; i++) {
+            const pt = landmarks[this.RIGHT_EYE[i]];
+            if (i === 0) {
+                this.outputCtx.moveTo(pt.x * w, pt.y * h);
+            } else {
+                this.outputCtx.lineTo(pt.x * w, pt.y * h);
+            }
+        }
+        this.outputCtx.closePath();
+        this.outputCtx.stroke();
+        
+        // Draw iris centers
+        this.outputCtx.fillStyle = '#00ffff';
+        
+        // Left iris
+        const leftIris = this.getIrisCenterFromMediaPipe(landmarks, this.LEFT_IRIS);
+        if (leftIris) {
+            this.outputCtx.beginPath();
+            this.outputCtx.arc(leftIris.x * w, leftIris.y * h, 3, 0, Math.PI * 2);
+            this.outputCtx.fill();
+        }
+        
+        // Right iris
+        const rightIris = this.getIrisCenterFromMediaPipe(landmarks, this.RIGHT_IRIS);
+        if (rightIris) {
+            this.outputCtx.beginPath();
+            this.outputCtx.arc(rightIris.x * w, rightIris.y * h, 3, 0, Math.PI * 2);
+            this.outputCtx.fill();
+        }
+        
+        // Draw gaze indicator
+        this.outputCtx.fillStyle = this.isFocused ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)';
+        const gazeX = this.gazeDirection.x * w;
+        const gazeY = this.gazeDirection.y * h;
+        this.outputCtx.beginPath();
+        this.outputCtx.arc(gazeX, 30, 15, 0, Math.PI * 2);
+        this.outputCtx.fill();
+    }
+    
+    // Keep old methods for compatibility but they won't be used
     processEyeLandmarks(face) {
         const keypoints = face.keypoints;
         
@@ -430,27 +626,173 @@ class CVEyeTrackingSystem {
     }
     
     isGazeFocused() {
-        // Check if gaze is within the "focused" region
+        // Multi-factor focus detection
         const { x, y } = this.gazeDirection;
         const { horizontalMin, horizontalMax, verticalMin, verticalMax } = this.focusThresholds;
         
-        return x >= horizontalMin && x <= horizontalMax && 
-               y >= verticalMin && y <= verticalMax;
+        // Factor 1: Gaze position within screen bounds
+        const gazeInBounds = x >= horizontalMin && x <= horizontalMax && 
+                             y >= verticalMin && y <= verticalMax;
+        
+        // Factor 2: Head pose - is head turned away?
+        const headFacingScreen = this.isHeadFacingScreen();
+        
+        // Factor 3: Eyes open (not closed or drowsy for extended period)
+        const eyesOpen = this.eyeAspectRatio.average >= this.earThresholds.blinkThreshold;
+        
+        // Factor 4: Not making rapid eye movements away from center
+        const notLookingAway = !this.isRapidGazeMovement();
+        
+        // User is focused if:
+        // - Gaze is in bounds AND head facing screen AND eyes reasonably open
+        // - OR gaze is in bounds AND eyes open (allow some head movement)
+        if (!eyesOpen) {
+            this.consecutiveClosedEyeFrames++;
+            // Prolonged eye closure = unfocused
+            if (this.consecutiveClosedEyeFrames >= this.earThresholds.closedFramesForUnfocus) {
+                return false;
+            }
+        } else {
+            this.consecutiveClosedEyeFrames = 0;
+        }
+        
+        // Primary check: gaze + head pose
+        if (gazeInBounds && headFacingScreen && notLookingAway) {
+            return true;
+        }
+        
+        // Secondary check: just gaze (more lenient, for when head tracking is unreliable)
+        if (gazeInBounds && eyesOpen) {
+            // Still focused but with reduced confidence
+            return true;
+        }
+        
+        return false;
+    }
+    
+    isHeadFacingScreen() {
+        const { yaw, pitch, roll } = this.headPose;
+        const { maxYawAngle, maxPitchAngle, maxRollAngle } = this.headPoseThresholds;
+        
+        return Math.abs(yaw) <= maxYawAngle && 
+               Math.abs(pitch) <= maxPitchAngle && 
+               Math.abs(roll) <= maxRollAngle;
+    }
+    
+    isRapidGazeMovement() {
+        if (this.gazeHistory.length < 2) return false;
+        
+        const current = this.gazeHistory[this.gazeHistory.length - 1];
+        const previous = this.gazeHistory[this.gazeHistory.length - 2];
+        
+        const deltaX = Math.abs(current.x - previous.x);
+        const deltaY = Math.abs(current.y - previous.y);
+        const movement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        // Rapid movement away from center
+        const movingAwayFromCenter = 
+            (current.x < 0.3 && deltaX > 0.05 && current.x < previous.x) ||
+            (current.x > 0.7 && deltaX > 0.05 && current.x > previous.x) ||
+            (current.y < 0.2 && deltaY > 0.05 && current.y < previous.y) ||
+            (current.y > 0.8 && deltaY > 0.05 && current.y > previous.y);
+        
+        return movement > this.rapidMovementThreshold && movingAwayFromCenter;
+    }
+    
+    calculateEyeAspectRatio(landmarks) {
+        // EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
+        // Simplified: vertical distance / horizontal distance
+        
+        try {
+            // Left eye EAR
+            const leftTop = landmarks[this.LEFT_EYE_VERTICAL[0]];
+            const leftBottom = landmarks[this.LEFT_EYE_VERTICAL[1]];
+            const leftLeft = landmarks[this.LEFT_EYE_HORIZONTAL[0]];
+            const leftRight = landmarks[this.LEFT_EYE_HORIZONTAL[1]];
+            
+            const leftVertical = Math.sqrt(
+                Math.pow(leftTop.x - leftBottom.x, 2) + 
+                Math.pow(leftTop.y - leftBottom.y, 2)
+            );
+            const leftHorizontal = Math.sqrt(
+                Math.pow(leftLeft.x - leftRight.x, 2) + 
+                Math.pow(leftLeft.y - leftRight.y, 2)
+            );
+            const leftEAR = leftHorizontal > 0 ? leftVertical / leftHorizontal : 0;
+            
+            // Right eye EAR
+            const rightTop = landmarks[this.RIGHT_EYE_VERTICAL[0]];
+            const rightBottom = landmarks[this.RIGHT_EYE_VERTICAL[1]];
+            const rightLeft = landmarks[this.RIGHT_EYE_HORIZONTAL[0]];
+            const rightRight = landmarks[this.RIGHT_EYE_HORIZONTAL[1]];
+            
+            const rightVertical = Math.sqrt(
+                Math.pow(rightTop.x - rightBottom.x, 2) + 
+                Math.pow(rightTop.y - rightBottom.y, 2)
+            );
+            const rightHorizontal = Math.sqrt(
+                Math.pow(rightLeft.x - rightRight.x, 2) + 
+                Math.pow(rightLeft.y - rightRight.y, 2)
+            );
+            const rightEAR = rightHorizontal > 0 ? rightVertical / rightHorizontal : 0;
+            
+            this.eyeAspectRatio = {
+                left: leftEAR,
+                right: rightEAR,
+                average: (leftEAR + rightEAR) / 2
+            };
+        } catch (e) {
+            // Keep previous values on error
+        }
+    }
+    
+    calculateHeadPose(landmarks) {
+        // Simplified head pose estimation using facial landmarks
+        try {
+            const nose = landmarks[this.NOSE_TIP];
+            const leftCheek = landmarks[this.LEFT_CHEEK];
+            const rightCheek = landmarks[this.RIGHT_CHEEK];
+            const forehead = landmarks[this.FOREHEAD];
+            const chin = landmarks[this.CHIN];
+            
+            // Yaw (left-right rotation): compare nose position relative to cheeks
+            const cheekMidX = (leftCheek.x + rightCheek.x) / 2;
+            const cheekWidth = Math.abs(rightCheek.x - leftCheek.x);
+            const yawRatio = (nose.x - cheekMidX) / (cheekWidth / 2);
+            this.headPose.yaw = yawRatio * 45; // Approximate degrees
+            
+            // Pitch (up-down rotation): compare nose to forehead-chin line
+            const faceMidY = (forehead.y + chin.y) / 2;
+            const faceHeight = Math.abs(chin.y - forehead.y);
+            const pitchRatio = (nose.y - faceMidY) / (faceHeight / 2);
+            this.headPose.pitch = pitchRatio * 30; // Approximate degrees
+            
+            // Roll (tilt): compare eye levels or cheek levels
+            const rollAngle = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
+            this.headPose.roll = rollAngle * (180 / Math.PI);
+            
+        } catch (e) {
+            // Keep previous values on error
+        }
     }
     
     handleNoFaceDetected() {
         this.consecutiveUnfocusedFrames++;
         this.consecutiveFocusedFrames = 0;
         
-        if (this.consecutiveUnfocusedFrames >= this.focusChangeThreshold * 2 && this.isFocused) {
+        // No face = definitely unfocused, react quickly
+        if (this.consecutiveUnfocusedFrames >= this.unfocusChangeThreshold && this.isFocused) {
             this.isFocused = false;
             this.handleFocusChange(false);
+            console.log('👁️ Unfocused: No face detected');
         }
         
         // Draw "No Face Detected" on output
-        this.outputCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-        this.outputCtx.font = 'bold 16px Arial';
-        this.outputCtx.fillText('No Face Detected', 10, 30);
+        if (this.outputCtx) {
+            this.outputCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            this.outputCtx.font = 'bold 16px Arial';
+            this.outputCtx.fillText('No Face Detected', 10, 30);
+        }
     }
     
     drawAnnotations(face) {

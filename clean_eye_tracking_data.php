@@ -1,10 +1,11 @@
 <?php
 // Clean Eye Tracking Data
+require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
-    die(json_encode(['error' => 'Connection failed: ' . $conn->connect_error]));
+$conn = getDBConnection();
+if (!$conn) {
+    die(json_encode(['error' => 'Connection failed']));
 }
 
 // Delete invalid sessions (less than 30 seconds or more than 2 hours)

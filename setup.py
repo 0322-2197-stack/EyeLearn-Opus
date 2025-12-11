@@ -192,22 +192,21 @@ def create_database_setup_script():
     
     db_script = """<?php
 // EyeLearn Database Setup Script
+require_once 'config.php';
+
 echo "<h1>EyeLearn Database Setup</h1>";
 
-$servername = "localhost";
-$username = "root";
-$password = "";
-
 try {
-    $pdo = new PDO("mysql:host=$servername", $username, $password);
+    // First connect without database to create it
+    $pdo = new PDO("mysql:host=" . DB_HOST, DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     // Create database
-    $pdo->exec("CREATE DATABASE IF NOT EXISTS elearn_db");
-    echo "<p>✅ Database 'elearn_db' created successfully</p>";
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
+    echo "<p>✅ Database '" . DB_NAME . "' created successfully</p>";
     
     // Use the database
-    $pdo->exec("USE elearn_db");
+    $pdo->exec("USE " . DB_NAME);
     
     // Create basic tables (simplified version)
     $tables = [
@@ -245,7 +244,14 @@ try {
             module_id INT,
             section_id INT,
             total_time_seconds INT DEFAULT 0,
+            focused_time_seconds INT DEFAULT 0,
+            unfocused_time_seconds INT DEFAULT 0,
+            focus_percentage DECIMAL(5,2) DEFAULT 0.00,
             session_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            session_end TIMESTAMP NULL,
+            is_focused TINYINT(1) DEFAULT 1,
+            duration_seconds INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (module_id) REFERENCES modules(id)
         )"
@@ -272,6 +278,7 @@ try {
     
     echo "<h2>🎉 Database setup completed successfully!</h2>";
     echo "<p>You can now access the application at: <a href='index.php'>EyeLearn Platform</a></p>";
+    echo "<p>Run <a href='check_database.php'>Database Check</a> to verify everything is working.</p>";
     
 } catch(PDOException $e) {
     echo "<p>❌ Error: " . $e->getMessage() . "</p>";

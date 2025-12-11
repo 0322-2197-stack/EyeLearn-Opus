@@ -1,16 +1,75 @@
-# Node and dependencies
+# ===================
+# EyeLearn .gitignore
+# ===================
+
+# VS Code Local History
+.history/
+
+# Backup files
+*BCK*
+*BCKUP*
+*backup*
+* copy*
+*.backup
+*.backup2
+
+# Dependencies
 node_modules/
-vendor/
-
-# System
-.DS_Store
-Thumbs.db
-
-# Uploads
-uploads/
-modulephotos/
-modulephotoshow/
-
-# Python env
+.venv/
+venv/
 __pycache__/
 *.pyc
+*.pyo
+
+# IDE/Editor
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+debug.log
+
+# Environment files
+.env
+*.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test/Debug files (keep in dev, exclude from production)
+*_test.html
+*_diagnostic.html
+debug_*.php
+*_debug.php
+test_*.html
+test_*.php
+
+# Temporary files
+*.tmp
+*.temp
+New Text Document.txt
+
+# Uploads (keep folder structure, ignore contents)
+uploads/*
+!uploads/.gitkeep
+modulephotos/*
+!modulephotos/.gitkeep
+modulephotoshow/*
+!modulephotoshow/.gitkeep
+modulecontentimages/*
+!modulecontentimages/.gitkeep
+
+# Python virtual environments
+python_services/venv/
+python_services/.vs/
+python_services/__pycache__/
+
+# Compiled files
+*.o
+*.dll
+*.so

@@ -1,5 +1,6 @@
 <?php
 // admin/database/student_details_minimal.php - Real student details API (Safe version)
+require_once __DIR__ . '/../../config.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -11,8 +12,8 @@ if (!$student_id) {
 }
 
 // Database connection
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
+$conn = getDBConnection();
+if (!$conn) {
     echo json_encode(['success' => false, 'error' => 'Database connection failed']);
     exit();
 }

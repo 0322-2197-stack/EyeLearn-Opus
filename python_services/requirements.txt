@@ -3,17 +3,16 @@
 # Last updated: 2025-08-04
 
 # Core Computer Vision Dependencies
-opencv-python>=4.8.0,<5.0.0          # Computer vision and image processing
-numpy>=1.24.0,<2.0.0                  # Numerical computing
-mediapipe>=0.10.0,<0.11.0             # Google MediaPipe for facial landmarks
+opencv-python-headless==4.8.0.76          # Computer vision and image processing
+numpy==1.24.3                  # Numerical computing
+dlib==19.24.2             # Alternative face detection
 
 # Web Framework Dependencies
-Flask>=2.3.0,<3.0.0                   # Lightweight web framework
-Flask-CORS>=4.0.0,<5.0.0              # Cross-Origin Resource Sharing support
+flask==2.3.3                   # Lightweight web framework
+flask-cors==4.0.0              # Cross-Origin Resource Sharing support
 
 # HTTP and Networking
-requests>=2.28.0,<3.0.0               # HTTP library for API calls
-urllib3>=1.26.0,<3.0.0                # HTTP client
+requests==2.31.0               # HTTP library for API calls
 
 # Image Processing and Utilities
 Pillow>=10.0.0,<11.0.0                # Python Imaging Library
@@ -24,7 +23,6 @@ pandas>=1.5.0,<3.0.0                  # Data analysis (optional, for advanced an
 scipy>=1.10.0,<2.0.0                  # Scientific computing (optional)
 
 # Threading and Async Support
-threading-manager>=1.0.0              # Enhanced threading utilities (if available)
 
 # Development and Debugging (optional)
 matplotlib>=3.6.0,<4.0.0              # Plotting (for debugging/visualization)
@@ -32,7 +30,6 @@ seaborn>=0.12.0,<1.0.0                # Statistical plotting (optional)
 
 # System and Platform Detection
 psutil>=5.9.0                         # System monitoring
-platform-detector>=1.0.0             # Platform detection (if available)
 
 # Additional Utilities
 python-dotenv>=1.0.0                  # Environment variable management

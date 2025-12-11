@@ -109,13 +109,15 @@ class GazeTracking(object):
     def is_center(self):
         """Returns true if the user is looking to the center"""
         if self.pupils_located:
-            return self.is_right() is not True and self.is_left() is not True
+            return not self.is_right() and not self.is_left()
+        return False
 
     def is_blinking(self):
         """Returns true if the user closes his eyes"""
         if self.pupils_located:
             blinking_ratio = (self.eye_left.blinking + self.eye_right.blinking) / 2
             return blinking_ratio > 3.8
+        return False
 
     def annotated_frame(self):
         """Returns the main frame with pupils highlighted"""

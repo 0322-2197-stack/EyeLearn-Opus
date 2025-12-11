@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config.php';
+
 if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1 || $_SESSION['role'] !== 'admin') {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
@@ -12,8 +13,8 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
+$conn = getDBConnection();
+if (!$conn) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database connection error']);
     exit;

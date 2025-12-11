@@ -1,6 +1,6 @@
 <?php
+require_once __DIR__ . '/../../config.php';
 header('Content-Type: application/json');
-session_start();
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -9,8 +9,8 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
+$conn = getDBConnection();
+if (!$conn) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed']);
     exit();

@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../config.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -16,14 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['camera_agreement_accepted'] = true;
         
         // Save agreement to database
-        $conn = new mysqli('localhost', 'root', '', 'elearn_db');
-        if (!$conn->connect_error) {
+        $conn = getDBConnection();
+        if ($conn) {
             $user_id = $_SESSION['user_id'];
             $sql = "UPDATE users SET camera_agreement_accepted = 1, camera_agreement_date = NOW() WHERE id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param('i', $user_id);
             $stmt->execute();
-            $conn->close();
         }
         
         header('Location: Sdashboard.php');

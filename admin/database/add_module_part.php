@@ -1,14 +1,15 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../config.php';
+
 if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1 || $_SESSION['role'] !== 'admin') {
     header("Location: ../loginpage.php");
     exit;
 }
 
 // Database connection
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+$conn = getDBConnection();
+if (!$conn) {
+    die("Connection failed");
 }
 
 // Process form submission for adding a new module part

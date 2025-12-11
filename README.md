@@ -63,69 +63,43 @@ git clone <repository-url>
 cd capstone
 ```
 
-#### Step 2: Database Setup
-1. Start XAMPP and ensure Apache and MySQL are running
-2. Open phpMyAdmin (http://localhost/phpmyadmin)
-3. Create a new database called `elearn_db`
-4. Import the database schema:
-   ```sql
-   -- Import database/elearn_db.sql
-   ```
-
-#### Step 3: Web Application Setup
-1. Copy the project to your XAMPP htdocs folder:
-   ```bash
-   cp -r capstone/ C:/xampp/htdocs/
-   ```
-
-2. Update database configuration in `config.php`:
+#### Step 2: Configure Database
+1. Copy the project to your XAMPP htdocs folder
+2. Open `config.php` and verify the settings:
    ```php
-   <?php
-   $servername = "localhost";
-   $username = "root";
-   $password = "";
-   $dbname = "elearn_db";
-   ?>
+   define('DB_HOST', 'localhost');
+   define('DB_USER', 'root');
+   define('DB_PASS', '');
+   define('DB_NAME', 'elearn_db');
    ```
+
+#### Step 3: Database Setup
+1. Start XAMPP and ensure Apache and MySQL are running
+2. Run the database setup: http://localhost/capstone/database_setup.php
+3. Verify connectivity: http://localhost/capstone/check_database.php
 
 #### Step 4: Python Environment Setup
-1. Navigate to the Python services directory:
-   ```bash
-   cd python_services
-   ```
+```bash
+cd python_services
+python -m venv venv
 
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # Mac/Linux
-   source venv/bin/activate
-   ```
+# Windows
+venv\Scripts\activate
 
-3. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Mac/Linux
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
 
 #### Step 5: Start the Services
-
 1. **Start the Eye Tracking Service**:
    ```bash
    cd python_services
    python eye_tracking_service.py
    ```
-   
-   You should see:
-   ```
-   Starting Enhanced Eye Tracking Service v2.0...
-   * Running on http://127.0.0.1:5000
-   ```
 
-2. **Access the Web Application**:
-   - Open your browser and go to: http://localhost/capstone
+2. **Access the Web Application**: http://localhost/capstone
    - Login with default admin credentials (see Database Setup section)
 
 ## 👥 User Accounts
@@ -205,9 +179,19 @@ cd capstone
 4. **Clean Data**: Use the diagnostic tools to clean invalid sessions
 
 #### Database Connection Issues
-1. **Verify MySQL**: Ensure MySQL service is running in XAMPP
-2. **Check Credentials**: Verify database configuration in `config.php`
-3. **Database Exists**: Ensure `elearn_db` database is created and populated
+1. Run the database check: http://localhost/capstone/check_database.php
+2. **Verify MySQL**: Ensure MySQL service is running in XAMPP
+3. **Check Credentials**: Verify database configuration in `config.php`
+4. **Database Exists**: Run `database_setup.php` to create tables
+
+### Common Fixes
+```bash
+# Check if MySQL is running (Windows)
+netstat -an | findstr 3306
+
+# Check if MySQL is running (Linux/Mac)
+netstat -an | grep 3306
+```
 
 #### Python Service Issues
 1. **Check Dependencies**: Ensure all requirements are installed

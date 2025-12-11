@@ -227,6 +227,9 @@ class CVEyeTrackingSystem {
                 module_id: this.moduleId,
                 section_id: this.sectionId,
                 session_time: Math.floor(this.timers.sessionTime || 0),
+                completion_percentage: typeof currentCompletionPercentage !== 'undefined'
+                ? currentCompletionPercentage
+                : 0,
                 focus_data: {
                     focused_time: Math.floor(this.timers.focusedTime || 0),
                     unfocused_time: Math.floor(this.timers.unfocusedTime || 0),
@@ -1159,40 +1162,42 @@ class CVEyeTrackingSystem {
     }
 
     showServiceError() {
+        // Only show error once per session, not on every page navigation
+        if (sessionStorage.getItem('eyeTrackingErrorShown') === 'true') {
+            console.log('👁️ Eye tracking service unavailable (error already shown this session)');
+            return;
+        }
+        
+        // Mark as shown for this session
+        sessionStorage.setItem('eyeTrackingErrorShown', 'true');
+        
+        // Show a subtle, non-intrusive notification instead of a large popup
         const errorContainer = document.createElement('div');
+        errorContainer.id = 'eye-tracking-error-notice';
         errorContainer.innerHTML = `
-            <div class="fixed top-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 max-w-sm z-50">
-                <div class="flex items-center mb-2">
-                    <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                    <h3 class="text-sm font-semibold text-red-700">Enhanced Eye Tracking Service</h3>
+            <div class="fixed bottom-4 right-4 bg-gray-100 border border-gray-300 rounded-lg p-3 max-w-xs z-50 shadow-sm opacity-90 hover:opacity-100 transition-opacity">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+                        <span class="text-xs text-gray-600">Eye tracking offline</span>
+                    </div>
+                    <button onclick="this.closest('#eye-tracking-error-notice').remove()" class="text-gray-400 hover:text-gray-600 ml-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
-                
-                <div class="text-xs text-red-600 space-y-1">
-                    <p>❌ Enhanced Python service not running</p>
-                    <p>To enable enhanced CV eye tracking:</p>
-                    <ol class="list-decimal list-inside ml-2 space-y-1">
-                        <li>Install Python dependencies (opencv, numpy, flask)</li>
-                        <li>Run enhanced eye_tracking_service.py from python_services/</li>
-                        <li>Service should start on http://127.0.0.1:5000</li>
-                        <li>Refresh this page</li>
-                    </ol>
-                    <p class="text-blue-600 mt-2">🎯 Features: 3s countdown, real-time focus tracking, detailed metrics</p>
-                </div>
-                
-                <button onclick="this.parentElement.remove()" class="mt-2 text-xs text-red-600 hover:text-red-800">
-                    Dismiss
-                </button>
             </div>
         `;
         
         document.body.appendChild(errorContainer);
         
-        // Auto-dismiss after 15 seconds (longer since it's enhanced info)
+        // Auto-dismiss after 5 seconds
         setTimeout(() => {
             if (errorContainer.parentNode) {
                 errorContainer.remove();
             }
-        }, 15000);
+        }, 5000);
     }
 
     // Public method to get current stats

@@ -1,13 +1,13 @@
 <?php
 // Eye Tracking Analytics Dashboard for Admins
-session_start();
+require_once __DIR__ . '/../config.php';
 
 // Check if user is admin (you may need to adjust this based on your admin authentication)
 // For now, we'll check if they're logged in as an admin
 
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+$conn = getDBConnection();
+if (!$conn) {
+    die("Connection failed");
 }
 
 // Get analytics data with tracking type
