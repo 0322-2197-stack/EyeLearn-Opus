@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_retake'])) {
         }
 
         $redirectStatus = $redirectStatus ?? 'error';
-        $targetQuizId = $requestedQuizId ?: $selected_quiz_id;
+        $targetQuizId = $requestedQuizId;
         header("Location: " . $_SERVER['PHP_SELF'] . "?module_id={$selected_module_id}&final_quiz={$targetQuizId}&retake={$redirectStatus}");
         exit;
     }
@@ -1863,6 +1863,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="bg-primary rounded-full w-8 h-8 flex items-center justify-center text-white font-medium text-sm">
                         <?php echo $initials; ?>
                     </div>
+                </button>
                 <div id="profile-dropdown" class="profile-dropdown">
                     <div class="p-4 border-b">
                         <p class="font-medium text-gray-800"><?php echo $user_display_name; ?></p>
@@ -2018,7 +2019,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div id="quiz-overview-card" class="text-center p-4 bg-green-50 border border-green-200 rounded-md shadow-sm mt-3">
                             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
                                 <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round, stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
                             <h3 class="text-lg font-bold text-green-900 mb-2">Quiz Already Completed</h3>
@@ -2674,7 +2675,7 @@ const buildQuizOverviewCard = (score, buttonLabel) => {
         <div id="quiz-overview-content" class="text-center p-4 bg-green-50 border border-green-200 rounded-md shadow-sm">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round, stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
             <h3 class="text-lg font-bold text-green-900 mb-2">Quiz Already Completed</h3>
