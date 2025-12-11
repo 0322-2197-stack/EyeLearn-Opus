@@ -56,7 +56,7 @@ $comprehension_data = getComprehensionLevel($conn, $user_id);
     <title>EyeLearn - AI-Enhanced E-Learning System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="../src/output.css">
     <script>
         tailwind.config = {
             theme: {
@@ -1893,7 +1893,8 @@ function handleLogout(e) {
 }
     // Load analytics when page loads and start real-time updates
     document.addEventListener('DOMContentLoaded', function() {
-        loadAnalytics();
+        console.log('DOMContentLoaded - calling loadAnalytics');
+        loadAnalytics().catch(err => console.error('loadAnalytics failed:', err));
         startRealtimeUpdates();
     });
 
