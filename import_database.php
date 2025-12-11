@@ -65,29 +65,33 @@ if ($conn->multi_query($sql)) {
     echo "✗ Error: " . $conn->error . "\n";
 }
 
-// Re-enable foreign key checks
-$conn->close();
-$conn = getDBConnection(); // Reconnect after multi_query
-$conn->query("SET FOREIGN_KEY_CHECKS = 1");
-
-echo "\n=== Import Complete ===\n";
-
-// Show tables
-echo "\n=== Tables in Database ===\n";
-$result = $conn->query("SHOW TABLES");
-if ($result) {
-    while ($row = $result->fetch_array()) {
-        $tableName = $row[0];
-        $countResult = $conn->query("SELECT COUNT(*) as cnt FROM `$tableName`");
-        if ($countResult) {
-            $count = $countResult->fetch_assoc()['cnt'];
-            echo "  - $tableName ($count rows)\n";
-        } else {
-            echo "  - $tableName (count error)\n";
-        }
-    }
+// Re-enable foreign key checks - create fresh connection
+$conn2 = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, (int)DB_PORT);
+if ($conn2->connect_error) {
+    echo "Reconnection failed, but import may have succeeded.\n";
 } else {
-    echo "Could not list tables\n";
+    $conn2->query("SET FOREIGN_KEY_CHECKS = 1");
+    
+    echo "\n=== Import Complete ===\n";
+    
+    // Show tables
+    echo "\n=== Tables in Database ===\n";
+    $result = $conn2->query("SHOW TABLES");
+    if ($result) {
+        while ($row = $result->fetch_array()) {
+            $tableName = $row[0];
+            $countResult = $conn2->query("SELECT COUNT(*) as cnt FROM `$tableName`");
+            if ($countResult) {
+                $count = $countResult->fetch_assoc()['cnt'];
+                echo "  - $tableName ($count rows)\n";
+            } else {
+                echo "  - $tableName (count error)\n";
+            }
+        }
+    } else {
+        echo "Could not list tables\n";
+    }
+    $conn2->close();
 }
 
 echo "\n⚠️ DELETE THIS FILE (import_database.php) AFTER SUCCESSFUL IMPORT!\n";
