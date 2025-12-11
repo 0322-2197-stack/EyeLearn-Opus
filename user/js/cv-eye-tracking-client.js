@@ -901,18 +901,106 @@ class CVEyeTrackingSystem {
     
     initializeTimers() {
         console.log('⏱️ Initializing timer system...');
-        this.timers.sessionStart = Date.now();
-        this.timers.sessionTime = 0;
-        this.timers.focusedTime = 0;
-        this.timers.unfocusedTime = 0;
-        this.timers.isCurrentlyFocused = false;
-        this.timers.baseFocusedTime = 0;
-        this.timers.baseUnfocusedTime = 0;
-        this.timers.currentUnfocusStart = Date.now(); // Start as unfocused
+        
+        // Try to restore session data from previous navigation within same module
+        const savedSession = this.restoreSessionFromStorage();
+        
+        if (savedSession) {
+            console.log('📦 Restoring session from storage:', savedSession);
+            this.timers.sessionStart = Date.now() - (savedSession.sessionTime * 1000);
+            this.timers.sessionTime = savedSession.sessionTime;
+            this.timers.focusedTime = savedSession.focusedTime;
+            this.timers.unfocusedTime = savedSession.unfocusedTime;
+            this.timers.isCurrentlyFocused = false;
+            this.timers.baseFocusedTime = savedSession.focusedTime;
+            this.timers.baseUnfocusedTime = savedSession.unfocusedTime;
+            this.timers.currentUnfocusStart = Date.now(); // Resume as unfocused
+        } else {
+            this.timers.sessionStart = Date.now();
+            this.timers.sessionTime = 0;
+            this.timers.focusedTime = 0;
+            this.timers.unfocusedTime = 0;
+            this.timers.isCurrentlyFocused = false;
+            this.timers.baseFocusedTime = 0;
+            this.timers.baseUnfocusedTime = 0;
+            this.timers.currentUnfocusStart = Date.now(); // Start as unfocused
+        }
+        
+        // Set up beforeunload handler to save session on navigation
+        this.setupNavigationPersistence();
         
         this.timerInterval = setInterval(() => {
             this.updateTimers();
         }, 100);
+    }
+    
+    setupNavigationPersistence() {
+        // Save session data when navigating away
+        const saveHandler = () => {
+            this.saveSessionToStorage();
+        };
+        
+        // Handle page navigation (beforeunload)
+        window.addEventListener('beforeunload', saveHandler);
+        
+        // Handle SPA-style navigation (clicks on section links)
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href*="Smodulepart.php"]');
+            if (link && link.href.includes(this.moduleId)) {
+                this.saveSessionToStorage();
+            }
+        });
+        
+        // Also save periodically in case of unexpected navigation
+        this.sessionPersistInterval = setInterval(() => {
+            this.saveSessionToStorage();
+        }, 5000); // Every 5 seconds
+    }
+    
+    saveSessionToStorage() {
+        const sessionKey = `eyetracking_session_${this.moduleId}`;
+        const sessionData = {
+            moduleId: this.moduleId,
+            sessionTime: this.timers.sessionTime || 0,
+            focusedTime: this.timers.focusedTime || 0,
+            unfocusedTime: this.timers.unfocusedTime || 0,
+            savedAt: Date.now()
+        };
+        sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
+    }
+    
+    restoreSessionFromStorage() {
+        const sessionKey = `eyetracking_session_${this.moduleId}`;
+        const saved = sessionStorage.getItem(sessionKey);
+        
+        if (!saved) return null;
+        
+        try {
+            const sessionData = JSON.parse(saved);
+            
+            // Only restore if saved within the last 5 minutes (avoid stale data)
+            const fiveMinutes = 5 * 60 * 1000;
+            if (Date.now() - sessionData.savedAt > fiveMinutes) {
+                console.log('🗑️ Session data too old, starting fresh');
+                sessionStorage.removeItem(sessionKey);
+                return null;
+            }
+            
+            // Verify it's for the same module
+            if (sessionData.moduleId !== this.moduleId) {
+                return null;
+            }
+            
+            return sessionData;
+        } catch (e) {
+            console.warn('Failed to parse saved session:', e);
+            return null;
+        }
+    }
+    
+    clearSessionFromStorage() {
+        const sessionKey = `eyetracking_session_${this.moduleId}`;
+        sessionStorage.removeItem(sessionKey);
     }
     
     updateTimers() {
@@ -1153,8 +1241,11 @@ class CVEyeTrackingSystem {
         this.isTransitioning = true;
         this.isTracking = false;
         
-        // Save final data
+        // Save final data to server
         await this.saveSessionData();
+        
+        // Clear the session storage since tracking is complete
+        this.clearSessionFromStorage();
         
         // Show final metrics
         this.showFinalMetrics({
@@ -1214,6 +1305,11 @@ class CVEyeTrackingSystem {
         if (this.statusUpdateInterval) {
             clearInterval(this.statusUpdateInterval);
             this.statusUpdateInterval = null;
+        }
+        
+        if (this.sessionPersistInterval) {
+            clearInterval(this.sessionPersistInterval);
+            this.sessionPersistInterval = null;
         }
         
         console.log('✅ All intervals cleaned up');
