@@ -268,6 +268,64 @@ function destroyUserSession() {
     session_destroy();
 }
 
+/**
+ * Check if user exists by email
+ * @param string $email
+ * @param PDO|null $pdo
+ * @return bool
+ */
+function userExists($email, $pdo = null) {
+    if ($pdo === null) {
+        $pdo = getPDOConnection();
+    }
+    
+    if (!$pdo) {
+        return false;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        return $stmt->fetch() !== false;
+    } catch (PDOException $e) {
+        error_log("Error checking user existence: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Register a new user
+ * @param string $firstName
+ * @param string $lastName
+ * @param string $email
+ * @param string $password
+ * @param string $gender
+ * @param string $section
+ * @param PDO|null $pdo
+ * @return bool
+ */
+function registerUser($firstName, $lastName, $email, $password, $gender, $section, $pdo = null) {
+    if ($pdo === null) {
+        $pdo = getPDOConnection();
+    }
+    
+    if (!$pdo) {
+        return false;
+    }
+    
+    try {
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("
+            INSERT INTO users (firstname, lastname, email, password, gender, section, role, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, 'student', NOW())
+        ");
+        return $stmt->execute([$firstName, $lastName, $email, $hashedPassword, $gender, $section]);
+    } catch (PDOException $e) {
+        error_log("Error registering user: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Initialize PDO connection for backward compatibility
 $pdo = getPDOConnection();
 ?>

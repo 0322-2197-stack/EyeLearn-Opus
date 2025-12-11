@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
-session_start();
+
+// Use centralized config
+require_once __DIR__ . '/../../config.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -16,19 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Database connection - Railway compatible with environment variables
-$db_host = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: 'localhost';
-$db_user = getenv('MYSQL_USER') ?: getenv('DB_USER') ?: 'root';
-$db_pass = getenv('MYSQL_PASSWORD') ?: getenv('DB_PASS') ?: '';
-$db_name = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'elearn_db';
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($conn->connect_error) {
+// Database connection using centralized config
+$conn = getDBConnection();
+if (!$conn) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed']);
     exit();
 }
-$conn->set_charset("utf8mb4");
 
 $user_id = $_SESSION['user_id'];
 
@@ -170,6 +166,4 @@ try {
     http_response_code(500);
     echo json_encode(['error' => 'Failed to save session data: ' . $e->getMessage()]);
 }
-
-$conn->close();
 ?>
