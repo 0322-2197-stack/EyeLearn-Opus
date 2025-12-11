@@ -1,10 +1,13 @@
 <?php
 session_start();
 
-// Add database connection
-$conn = new mysqli('localhost', 'root', '', 'elearn_db');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// Use centralized database config
+require_once __DIR__ . '/../config.php';
+
+// Get database connection from centralized config
+$conn = getDBConnection();
+if (!$conn) {
+    die("Connection failed");
 }
 
 if (!function_exists('ensureFinalQuizRetakeColumn')) {
