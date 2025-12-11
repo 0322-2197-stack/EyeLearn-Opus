@@ -55,16 +55,33 @@ try {
         exit();
     }
 
+    // Check if modules table exists
+    $modules_check = $conn->query("SHOW TABLES LIKE 'modules'");
+    $has_modules_table = $modules_check && $modules_check->num_rows > 0;
+
+    // Check which columns exist in eye_tracking_sessions
+    $cols_result = $conn->query("SHOW COLUMNS FROM eye_tracking_sessions");
+    $existing_cols = [];
+    while ($col = $cols_result->fetch_assoc()) {
+        $existing_cols[] = $col['Field'];
+    }
+    $has_last_updated = in_array('last_updated', $existing_cols);
+    $has_total_time = in_array('total_time_seconds', $existing_cols);
+    
+    // Use appropriate column names based on what exists
+    $time_col = $has_total_time ? 'ets.total_time_seconds' : '0';
+    $last_update_col = $has_last_updated ? 'MAX(ets.last_updated)' : 'MAX(ets.created_at)';
+
     // Get real-time overall user statistics from current sessions
     $stats_query = "
         SELECT 
             COUNT(DISTINCT COALESCE(ets.module_id, 0)) as modules_studied,
-            COALESCE(SUM(ets.total_time_seconds), 0) as total_study_time,
+            COALESCE(SUM($time_col), 0) as total_study_time,
             COUNT(ets.id) as total_sessions,
-            COALESCE(AVG(ets.total_time_seconds), 0) as avg_session_time,
-            COALESCE(MAX(ets.total_time_seconds), 0) as longest_session,
+            COALESCE(AVG($time_col), 0) as avg_session_time,
+            COALESCE(MAX($time_col), 0) as longest_session,
             MIN(ets.created_at) as first_session_date,
-            MAX(ets.last_updated) as last_session_date
+            $last_update_col as last_session_date
         FROM eye_tracking_sessions ets 
         WHERE ets.user_id = ?
     ";
@@ -92,15 +109,15 @@ try {
     $recent_sessions_query = "
         SELECT 
             DATE(ets.created_at) as session_date,
-            SUM(ets.total_time_seconds) as daily_study_time,
+            SUM($time_col) as daily_study_time,
             COUNT(ets.id) as daily_sessions,
-            AVG(ets.total_time_seconds) as avg_session_duration,
-            m.title as module_title
+            AVG($time_col) as avg_session_duration,
+            " . ($has_modules_table ? "m.title" : "'Module'") . " as module_title
         FROM eye_tracking_sessions ets
-        LEFT JOIN modules m ON ets.module_id = m.id
+        " . ($has_modules_table ? "LEFT JOIN modules m ON ets.module_id = m.id" : "") . "
         WHERE ets.user_id = ?
         AND ets.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY DATE(ets.created_at), m.title
+        GROUP BY DATE(ets.created_at)" . ($has_modules_table ? ", m.title" : "") . "
         ORDER BY session_date DESC, daily_study_time DESC
         LIMIT 30
     ";
@@ -122,40 +139,42 @@ try {
         ];
     }
 
-    // Get module-specific performance
-    $module_performance_query = "
-        SELECT 
-            m.title as module_title,
-            m.id as module_id,
-            SUM(ets.total_time_seconds) as total_time,
-            COUNT(ets.id) as session_count,
-            AVG(ets.total_time_seconds) as avg_session_time,
-            MAX(ets.total_time_seconds) as best_session,
-            MAX(ets.last_updated) as last_studied
-        FROM eye_tracking_sessions ets
-        JOIN modules m ON ets.module_id = m.id
-        WHERE ets.user_id = ?
-        GROUP BY ets.module_id, m.title, m.id
-        ORDER BY total_time DESC
-    ";
-    
-    $stmt = $conn->prepare($module_performance_query);
-    $stmt->bind_param('i', $user_id);
-    $stmt->execute();
-    $module_result = $stmt->get_result();
-    
+    // Get module-specific performance (only if modules table exists)
     $module_performance = [];
-    while ($row = $module_result->fetch_assoc()) {
-        $module_performance[] = $row;
+    if ($has_modules_table) {
+        $module_performance_query = "
+            SELECT 
+                m.title as module_title,
+                m.id as module_id,
+                SUM($time_col) as total_time,
+                COUNT(ets.id) as session_count,
+                AVG($time_col) as avg_session_time,
+                MAX($time_col) as best_session,
+                " . ($has_last_updated ? "MAX(ets.last_updated)" : "MAX(ets.created_at)") . " as last_studied
+            FROM eye_tracking_sessions ets
+            JOIN modules m ON ets.module_id = m.id
+            WHERE ets.user_id = ?
+            GROUP BY ets.module_id, m.title, m.id
+            ORDER BY total_time DESC
+        ";
+        
+        $stmt = $conn->prepare($module_performance_query);
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $module_result = $stmt->get_result();
+        
+        while ($row = $module_result->fetch_assoc()) {
+            $module_performance[] = $row;
+        }
     }
 
     // Get focus trends (last 7 days) from real session data
     $focus_trends_query = "
         SELECT 
             DATE(ets.created_at) as study_date,
-            SUM(ets.total_time_seconds) as daily_focus_time,
+            SUM($time_col) as daily_focus_time,
             COUNT(ets.id) as daily_sessions,
-            AVG(ets.total_time_seconds) as avg_session_duration
+            AVG($time_col) as avg_session_duration
         FROM eye_tracking_sessions ets
         WHERE ets.user_id = ? 
         AND ets.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -174,18 +193,19 @@ try {
     }
 
     // Get current active session data if available
+    $last_updated_col_name = $has_last_updated ? "ets.last_updated" : "ets.created_at";
     $current_session_query = "
         SELECT 
             ets.module_id,
-            ets.section_id,
-            ets.total_time_seconds,
+            " . (in_array('section_id', $existing_cols) ? "ets.section_id" : "NULL as section_id") . ",
+            $time_col as total_time_seconds,
             ets.created_at,
-            m.title as module_title
+            " . ($has_modules_table ? "m.title" : "'Module'") . " as module_title
         FROM eye_tracking_sessions ets
-        LEFT JOIN modules m ON ets.module_id = m.id
+        " . ($has_modules_table ? "LEFT JOIN modules m ON ets.module_id = m.id" : "") . "
         WHERE ets.user_id = ?
-        AND ets.last_updated > DATE_SUB(NOW(), INTERVAL 1 HOUR)
-        ORDER BY ets.last_updated DESC
+        AND $last_updated_col_name > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        ORDER BY $last_updated_col_name DESC
         LIMIT 1
     ";
     
