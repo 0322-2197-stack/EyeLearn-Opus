@@ -1815,14 +1815,17 @@ function loadProfileData() {
     }
 }
 
-document.getElementById('profileForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    try {
-        const response = await fetch('profile_update.php', {
-            method: 'POST',
+// Profile form submission - with null check
+const profileFormEl = document.getElementById('profileForm');
+if (profileFormEl) {
+    profileFormEl.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch('profile_update.php', {
+                method: 'POST',
             body: formData
         });
         
@@ -1869,20 +1872,27 @@ document.getElementById('profileForm').addEventListener('submit', async function
         console.error('Error:', error);
         alert(error.message || 'An error occurred while updating profile');
     }
-});
+    });
+} // End of profileFormEl if block
 
-// Update the profile link click handler
-document.querySelector('#profile-dropdown a[href="#"]').addEventListener('click', function(e) {
-    e.preventDefault();
-    openProfileModal();
-});
+// Update the profile link click handler - with null check
+const profileLink = document.querySelector('#profile-dropdown a[href="#"]');
+if (profileLink) {
+    profileLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        openProfileModal();
+    });
+}
 
-// Close modal when clicking outside
-document.getElementById('profileModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeProfileModal();
-    }
-});
+// Close modal when clicking outside - with null check
+const profileModalEl = document.getElementById('profileModal');
+if (profileModalEl) {
+    profileModalEl.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeProfileModal();
+        }
+    });
+}
 
 // Add this function near your other JavaScript code
 function handleLogout(e) {
@@ -1891,12 +1901,17 @@ function handleLogout(e) {
         window.location.href = '../logout.php';
     }
 }
-    // Load analytics when page loads and start real-time updates
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOMContentLoaded - calling loadAnalytics');
+
+// Load analytics when page loads and start real-time updates
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded - calling loadAnalytics');
+    try {
         loadAnalytics().catch(err => console.error('loadAnalytics failed:', err));
         startRealtimeUpdates();
-    });
+    } catch (err) {
+        console.error('Error in DOMContentLoaded:', err);
+    }
+});
 
     // Stop real-time updates when leaving the page
     window.addEventListener('beforeunload', function() {
