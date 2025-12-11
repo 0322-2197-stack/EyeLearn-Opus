@@ -1289,10 +1289,10 @@ $comprehension_data = getComprehensionLevel($conn, $user_id);
 
     // Close dropdown when clicking elsewhere on the page
     document.addEventListener('click', function(e) {
-        if (profileToggle && !profileToggle.contains(e.target) && !profileDropdown.contains(e.target)) {
+        if (profileToggle && profileDropdown && !profileToggle.contains(e.target) && !profileDropdown.contains(e.target)) {
             profileDropdown.classList.remove('show');
         }
-        if (profileToggleMobile && !profileToggleMobile.contains(e.target) && !profileDropdownMobile.contains(e.target)) {
+        if (profileToggleMobile && profileDropdownMobile && !profileToggleMobile.contains(e.target) && !profileDropdownMobile.contains(e.target)) {
             profileDropdownMobile.classList.remove('show');
         }
     });
@@ -1301,21 +1301,21 @@ $comprehension_data = getComprehensionLevel($conn, $user_id);
     function setActivePage() {
         const currentPage = window.location.pathname.split('/').pop(); // Get the current page file name
         
-        // Reset all links
+        // Reset all links - with null checks
         [dashboardItem, modulesItem, assessmentsItem].forEach(item => {
-            item.classList.remove('active');
+            if (item) item.classList.remove('active');
         });
         
         // Highlight the active link based on the current page
         if (currentPage === 'Sdashboard.php' || currentPage === '' || currentPage === '/') {
-            dashboardItem.classList.add('active');
+            if (dashboardItem) dashboardItem.classList.add('active');
         } else if (currentPage === 'Smodule.php') {
-            modulesItem.classList.add('active');
+            if (modulesItem) modulesItem.classList.add('active');
         } else if (currentPage === 'Sassessment.php') {
-            assessmentsItem.classList.add('active');
+            if (assessmentsItem) assessmentsItem.classList.add('active');
         } else {
             // Default to dashboard if no match
-            dashboardItem.classList.add('active');
+            if (dashboardItem) dashboardItem.classList.add('active');
         }
     }
 
