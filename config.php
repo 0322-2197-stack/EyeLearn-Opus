@@ -199,6 +199,23 @@ function initializeDatabaseTables($conn) {
         ip_address VARCHAR(45),
         user_agent TEXT
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create eye_tracking_sessions table for analytics
+    $conn->query("CREATE TABLE IF NOT EXISTS eye_tracking_sessions (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        module_id INT NOT NULL,
+        section_id INT DEFAULT NULL,
+        total_time_seconds INT DEFAULT 0,
+        session_type ENUM('viewing','pause','resume') DEFAULT 'viewing',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        focused_time_seconds INT DEFAULT 0,
+        unfocused_time_seconds INT DEFAULT 0,
+        session_data TEXT DEFAULT NULL,
+        INDEX idx_user_module (user_id, module_id),
+        INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
 /**

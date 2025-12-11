@@ -19,6 +19,42 @@ if (!$conn) {
 $user_id = $_SESSION['user_id'];
 
 try {
+    // Check if eye_tracking_sessions table exists
+    $table_check = $conn->query("SHOW TABLES LIKE 'eye_tracking_sessions'");
+    if (!$table_check || $table_check->num_rows === 0) {
+        // Table doesn't exist - return empty data
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'overall_stats' => [
+                    'modules_studied' => 0,
+                    'total_study_time_hours' => 0,
+                    'total_sessions' => 0,
+                    'avg_session_minutes' => 0,
+                    'longest_session_minutes' => 0,
+                    'focus_efficiency_percent' => 0,
+                    'first_session' => null,
+                    'last_session' => null
+                ],
+                'recent_analytics' => [],
+                'module_performance' => [],
+                'focus_trends' => [],
+                'current_session' => null,
+                'insights' => [
+                    'best_study_day' => null,
+                    'improvement_suggestion' => 'Start studying a module to see your analytics!',
+                    'streak_info' => null
+                ],
+                'realtime_data' => [
+                    'last_updated' => date('Y-m-d H:i:s'),
+                    'is_currently_studying' => false,
+                    'active_module' => null
+                ]
+            ]
+        ]);
+        exit();
+    }
+
     // Get real-time overall user statistics from current sessions
     $stats_query = "
         SELECT 
