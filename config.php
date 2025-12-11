@@ -16,12 +16,23 @@ if (defined('DB_CONFIG_LOADED')) {
 define('DB_CONFIG_LOADED', true);
 
 // Database credentials - Auto-detect environment
-// Uses environment variables for Railway/cloud, falls back to localhost for XAMPP
-define('DB_HOST', getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: 'localhost');
-define('DB_USER', getenv('MYSQL_USER') ?: getenv('MYSQLUSER') ?: 'root');
-define('DB_PASS', getenv('MYSQL_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: '');
-define('DB_NAME', getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: 'elearn_db');
-define('DB_PORT', getenv('MYSQL_PORT') ?: getenv('MYSQLPORT') ?: '3306');
+// Parse MYSQL_URL if available (Railway format: mysql://user:pass@host:port/database)
+$mysql_url = getenv('MYSQL_URL');
+if ($mysql_url) {
+    $parsed = parse_url($mysql_url);
+    define('DB_HOST', $parsed['host'] ?? 'localhost');
+    define('DB_USER', $parsed['user'] ?? 'root');
+    define('DB_PASS', $parsed['pass'] ?? '');
+    define('DB_NAME', ltrim($parsed['path'] ?? '/elearn_db', '/'));
+    define('DB_PORT', $parsed['port'] ?? '3306');
+} else {
+    // Falls back to individual env vars or localhost for XAMPP
+    define('DB_HOST', getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: 'localhost');
+    define('DB_USER', getenv('MYSQL_USER') ?: getenv('MYSQLUSER') ?: 'root');
+    define('DB_PASS', getenv('MYSQL_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: '');
+    define('DB_NAME', getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: 'elearn_db');
+    define('DB_PORT', getenv('MYSQL_PORT') ?: getenv('MYSQLPORT') ?: '3306');
+}
 
 // Check if running on Railway/cloud
 define('IS_PRODUCTION', getenv('RAILWAY_ENVIRONMENT') || getenv('APP_ENV') === 'production');
