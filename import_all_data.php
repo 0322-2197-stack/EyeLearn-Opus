@@ -84,7 +84,7 @@ $sql = "CREATE TABLE IF NOT EXISTS `user_module_progress` (
   `module_id` int(11) NOT NULL,
   `completed_sections` longtext DEFAULT NULL,
   `last_accessed` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `completed_checkpoint_quizzes` longtext DEFAULT '[]',
+  `completed_checkpoint_quizzes` longtext,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_module` (`user_id`,`module_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
