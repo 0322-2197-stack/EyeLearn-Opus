@@ -1247,7 +1247,7 @@ try {
     // Fetch real dashboard data
     async function fetchDashboardData() {
         try {
-            const response = await fetch('database/get_dashboard_data.php');
+            const response = await fetch('/admin/database/get_dashboard_data.php');
             
             if (!response.ok) {
                 console.error('HTTP error! status:', response.status, response.statusText);
@@ -1827,8 +1827,8 @@ try {
         // Fetch fresh data for the selected module
         try {
             const url = moduleId === 'all' 
-                ? 'database/get_dashboard_data.php'
-                : `database/get_dashboard_data.php?module_id=${moduleId}`;
+                ? '/admin/database/get_dashboard_data.php'
+                : `/admin/database/get_dashboard_data.php?module_id=${moduleId}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -2023,8 +2023,8 @@ try {
         // Fetch fresh data for the selected module
         try {
             const url = moduleId === 'all' 
-                ? 'database/get_dashboard_data.php'
-                : `database/get_dashboard_data.php?avg_score_module_id=${moduleId}`;
+                ? '/admin/database/get_dashboard_data.php'
+                : `/admin/database/get_dashboard_data.php?avg_score_module_id=${moduleId}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -2256,8 +2256,8 @@ try {
         let questionData = [];
         try {
             const url = moduleId === null || moduleId === 'all' 
-                ? 'database/get_dashboard_data.php'
-                : `database/get_dashboard_data.php?checkpoint_module_id=${moduleId}`;
+                ? '/admin/database/get_dashboard_data.php'
+                : `/admin/database/get_dashboard_data.php?checkpoint_module_id=${moduleId}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -3000,8 +3000,8 @@ try {
         
         try {
             const url = moduleId === 'all' 
-                ? 'database/get_dashboard_data.php'
-                : `database/get_dashboard_data.php?student_performance_module_id=${moduleId}`;
+                ? '/admin/database/get_dashboard_data.php'
+                : `/admin/database/get_dashboard_data.php?student_performance_module_id=${moduleId}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -3157,7 +3157,7 @@ try {
     // Function to check if new data is available on the server
     async function checkForUpdates() {
         try {
-            const response = await fetch('database/check_updates.php');
+            const response = await fetch('/admin/database/check_updates.php');
             const updateData = await response.json();
 
             if (updateData.error) {
