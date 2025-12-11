@@ -130,13 +130,13 @@ function initializeDatabaseTables($conn) {
         INDEX idx_user_quiz (user_id, module_id, quiz_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-    // Migration: Ensure quiz_results has required columns (suppress errors for existing columns)
-    @$conn->query("ALTER TABLE quiz_results ADD COLUMN completion_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-    @$conn->query("ALTER TABLE quiz_results ADD COLUMN quiz_id INT NOT NULL DEFAULT 0");
+    // Migration: Ensure quiz_results has required columns (ignore duplicate column errors)
+    try { $conn->query("ALTER TABLE quiz_results ADD COLUMN completion_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"); } catch (mysqli_sql_exception $e) {}
+    try { $conn->query("ALTER TABLE quiz_results ADD COLUMN quiz_id INT NOT NULL DEFAULT 0"); } catch (mysqli_sql_exception $e) {}
     
-    // Migration: Ensure retake_results has required columns (suppress errors for existing columns)
-    @$conn->query("ALTER TABLE retake_results ADD COLUMN quiz_id INT NOT NULL DEFAULT 0");
-    @$conn->query("ALTER TABLE retake_results ADD COLUMN completion_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+    // Migration: Ensure retake_results has required columns (ignore duplicate column errors)
+    try { $conn->query("ALTER TABLE retake_results ADD COLUMN quiz_id INT NOT NULL DEFAULT 0"); } catch (mysqli_sql_exception $e) {}
+    try { $conn->query("ALTER TABLE retake_results ADD COLUMN completion_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"); } catch (mysqli_sql_exception $e) {}
 
     // Create checkpoint_quizzes table
     $conn->query("CREATE TABLE IF NOT EXISTS checkpoint_quizzes (
