@@ -113,10 +113,10 @@ function initializeDatabaseTables($conn) {
         id INT PRIMARY KEY AUTO_INCREMENT,
         user_id INT NOT NULL,
         module_id INT NOT NULL,
-        score DECIMAL(5,2) DEFAULT 0,
-        total_questions INT DEFAULT 0,
-        correct_answers INT DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        quiz_id INT NOT NULL,
+        score INT NOT NULL,
+        percentage DECIMAL(5,2) DEFAULT 0.00,
+        completion_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // Create retake_results table

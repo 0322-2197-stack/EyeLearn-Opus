@@ -24,13 +24,27 @@ function getWeeklyFocusScore($conn, $user_id) {
 }
 
 function getComprehensionLevel($conn, $user_id) {
-    $query = "SELECT 
-        AVG(score) as avg_score,
-        COUNT(*) as total_assessments,
-        MAX(completion_date) as latest_assessment
-        FROM quiz_results 
-        WHERE user_id = ? 
-        AND completion_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)";
+    // Check if completion_date column exists, fall back to checking table structure
+    $checkColumn = $conn->query("SHOW COLUMNS FROM quiz_results LIKE 'completion_date'");
+    $hasCompletionDate = $checkColumn && $checkColumn->num_rows > 0;
+    
+    if ($hasCompletionDate) {
+        $query = "SELECT 
+            AVG(score) as avg_score,
+            COUNT(*) as total_assessments,
+            MAX(completion_date) as latest_assessment
+            FROM quiz_results 
+            WHERE user_id = ? 
+            AND completion_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)";
+    } else {
+        // Fallback for tables without completion_date
+        $query = "SELECT 
+            AVG(score) as avg_score,
+            COUNT(*) as total_assessments,
+            NULL as latest_assessment
+            FROM quiz_results 
+            WHERE user_id = ?";
+    }
     
     $stmt = $conn->prepare($query);
     $stmt->bind_param('i', $user_id);
