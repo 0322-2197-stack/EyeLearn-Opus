@@ -38,6 +38,170 @@ if ($mysql_url) {
 define('IS_PRODUCTION', getenv('RAILWAY_ENVIRONMENT') || getenv('APP_ENV') === 'production');
 
 /**
+ * Initialize database tables (for fresh deployments like Railway)
+ * @param mysqli $conn
+ */
+function initializeDatabaseTables($conn) {
+    static $initialized = false;
+    if ($initialized) return;
+    $initialized = true;
+    
+    // Create users table
+    $conn->query("CREATE TABLE IF NOT EXISTS users (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        firstname VARCHAR(50),
+        lastname VARCHAR(50),
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        gender ENUM('male', 'female', 'other') DEFAULT 'other',
+        section VARCHAR(50) DEFAULT NULL,
+        role ENUM('student', 'admin') DEFAULT 'student',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create modules table
+    $conn->query("CREATE TABLE IF NOT EXISTS modules (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        photo VARCHAR(255),
+        status ENUM('draft', 'published') DEFAULT 'draft',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create user_module_progress table
+    $conn->query("CREATE TABLE IF NOT EXISTS user_module_progress (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        module_id INT NOT NULL,
+        completed_sections JSON DEFAULT NULL,
+        completed_checkpoint_quizzes JSON DEFAULT NULL,
+        final_quiz_score INT DEFAULT NULL,
+        last_section_quiz_score INT DEFAULT NULL,
+        status ENUM('in_progress', 'completed') DEFAULT 'in_progress',
+        last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY user_module_unique (user_id, module_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create module_parts table
+    $conn->query("CREATE TABLE IF NOT EXISTS module_parts (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        module_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        part_number INT DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create module_sections table
+    $conn->query("CREATE TABLE IF NOT EXISTS module_sections (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        module_part_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content TEXT,
+        section_order INT DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create quiz_results table
+    $conn->query("CREATE TABLE IF NOT EXISTS quiz_results (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        module_id INT NOT NULL,
+        score DECIMAL(5,2) DEFAULT 0,
+        total_questions INT DEFAULT 0,
+        correct_answers INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create retake_results table
+    $conn->query("CREATE TABLE IF NOT EXISTS retake_results (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        module_id INT NOT NULL,
+        score DECIMAL(5,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create checkpoint_quizzes table
+    $conn->query("CREATE TABLE IF NOT EXISTS checkpoint_quizzes (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        module_part_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create checkpoint_quiz_questions table
+    $conn->query("CREATE TABLE IF NOT EXISTS checkpoint_quiz_questions (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        checkpoint_quiz_id INT NOT NULL,
+        question TEXT NOT NULL,
+        option_a VARCHAR(255),
+        option_b VARCHAR(255),
+        option_c VARCHAR(255),
+        option_d VARCHAR(255),
+        correct_answer CHAR(1),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create checkpoint_quiz_results table
+    $conn->query("CREATE TABLE IF NOT EXISTS checkpoint_quiz_results (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        checkpoint_quiz_id INT NOT NULL,
+        score DECIMAL(5,2) DEFAULT 0,
+        total_questions INT DEFAULT 0,
+        correct_answers INT DEFAULT 0,
+        user_answers JSON DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create final_quizzes table
+    $conn->query("CREATE TABLE IF NOT EXISTS final_quizzes (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        module_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create final_quiz_questions table
+    $conn->query("CREATE TABLE IF NOT EXISTS final_quiz_questions (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        final_quiz_id INT NOT NULL,
+        question TEXT NOT NULL,
+        option_a VARCHAR(255),
+        option_b VARCHAR(255),
+        option_c VARCHAR(255),
+        option_d VARCHAR(255),
+        correct_answer CHAR(1),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create final_quiz_retakes table
+    $conn->query("CREATE TABLE IF NOT EXISTS final_quiz_retakes (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        module_id INT NOT NULL,
+        retake_count INT DEFAULT 0,
+        last_retake_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Create camera_agreements table
+    $conn->query("CREATE TABLE IF NOT EXISTS camera_agreements (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        agreed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address VARCHAR(45),
+        user_agent TEXT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+/**
  * Get MySQLi connection
  * @return mysqli|null
  */
@@ -53,6 +217,9 @@ function getDBConnection() {
         }
         
         $conn->set_charset("utf8mb4");
+        
+        // Initialize tables for fresh deployments
+        initializeDatabaseTables($conn);
     }
     
     return $conn;

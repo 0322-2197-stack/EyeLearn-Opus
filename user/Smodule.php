@@ -41,16 +41,6 @@ if ($result->num_rows > 0) {
     $initials = "US";
 }
 
-// Add last_accessed column if it doesn't exist (MySQL compatible)
-try {
-    $column_check = $conn->query("SHOW COLUMNS FROM user_module_progress LIKE 'last_accessed'");
-    if ($column_check && $column_check->num_rows == 0) {
-        $conn->query("ALTER TABLE user_module_progress ADD COLUMN last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-    }
-} catch (Exception $e) {
-    // Column might already exist or table doesn't exist yet, ignore
-}
-
 // Update the modules query
 $modules_query = "
     SELECT 
