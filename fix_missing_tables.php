@@ -140,19 +140,27 @@ else echo "✗ camera_agreements: " . $conn->error . "\n";
 
 echo "\n=== Inserting Admin User ===\n";
 
-// Insert admin user
-$sql = "INSERT IGNORE INTO `users` (`id`, `first_name`, `last_name`, `email`, `password`, `gender`, `section`, `role`, `profile_img`, `created_at`, `updated_at`, `camera_agreement_accepted`, `camera_agreement_date`) VALUES
-(1, 'Super', 'Admin', 'admin@admin.eyelearn', '\$2y\$10\$5eql26ue0JmbvS6AAIQr/.pL8njF47sQ/.lDScg9/Gb..M.iZG1Ty', '', NULL, 'admin', 'default.png', NOW(), NOW(), 0, NULL)";
+// Insert admin user (using only core columns)
+$sql = "INSERT IGNORE INTO `users` (`id`, `first_name`, `last_name`, `email`, `password`, `gender`, `section`, `role`) VALUES
+(1, 'Super', 'Admin', 'admin@admin.eyelearn', '\$2y\$10\$5eql26ue0JmbvS6AAIQr/.pL8njF47sQ/.lDScg9/Gb..M.iZG1Ty', 'Other', NULL, 'admin')";
 if ($conn->query($sql)) echo "✓ Inserted admin user\n";
 else echo "✗ Admin: " . $conn->error . "\n";
 
 // Insert sample student users
-$sql = "INSERT IGNORE INTO `users` (`id`, `first_name`, `last_name`, `email`, `password`, `gender`, `section`, `role`, `created_at`, `camera_agreement_accepted`) VALUES
-(32, 'Vonn Annilov', 'Cabajes', '0322-2197@lspu.edu.ph', '\$2y\$10\$pNlcZOVSctPbzmIudYe3geVGl1aK7CcYGBVnAcFkdsWHXmCus4td2', 'Female', 'BSINFO-1A', 'student', NOW(), 1),
-(31, 'Mark Aljerick', 'De Castro', '0322-2068@lspu.edu.ph', '\$2y\$10\$7O.GmiH3CE9/4Rb9qOKtcutk7FWSfyTOq9X03r5sOb24Q2ltz86qW', 'Male', 'BSINFO-1A', 'student', NOW(), 1),
-(33, 'Ian Theodore', 'Maloles', '0322-1939@lspu.edu.ph', '\$2y\$10\$ceBm3nPEKL65KLZMVSLTiux.5ghOtDsMT3prXYqSzxxBxX2qCOkU6', 'Male', 'BSINFO-1C', 'student', NOW(), 1)";
+$sql = "INSERT IGNORE INTO `users` (`id`, `first_name`, `last_name`, `email`, `password`, `gender`, `section`, `role`) VALUES
+(32, 'Vonn Annilov', 'Cabajes', '0322-2197@lspu.edu.ph', '\$2y\$10\$pNlcZOVSctPbzmIudYe3geVGl1aK7CcYGBVnAcFkdsWHXmCus4td2', 'Female', 'BSINFO-1A', 'student'),
+(31, 'Mark Aljerick', 'De Castro', '0322-2068@lspu.edu.ph', '\$2y\$10\$7O.GmiH3CE9/4Rb9qOKtcutk7FWSfyTOq9X03r5sOb24Q2ltz86qW', 'Male', 'BSINFO-1A', 'student'),
+(33, 'Ian Theodore', 'Maloles', '0322-1939@lspu.edu.ph', '\$2y\$10\$ceBm3nPEKL65KLZMVSLTiux.5ghOtDsMT3prXYqSzxxBxX2qCOkU6', 'Male', 'BSINFO-1C', 'student')";
 if ($conn->query($sql)) echo "✓ Inserted student users\n";
 else echo "✗ Students: " . $conn->error . "\n";
+
+// Insert user_module_progress data
+$sql = "INSERT IGNORE INTO `user_module_progress` (`id`, `user_id`, `module_id`, `completed_sections`, `completed_checkpoint_quizzes`) VALUES
+(44, 31, 22, '[\"checkpoint_1\",\"77\",\"78\",\"79\",\"80\",\"81\",\"82\",\"83\",\"84\"]', '[]'),
+(46, 32, 22, '[77,\"78\",\"79\",\"80\",\"81\",\"82\",\"83\",\"84\",\"checkpoint_1\"]', '[]'),
+(48, 33, 22, '[77,\"78\",\"79\",\"checkpoint_1\"]', '[]')";
+if ($conn->query($sql)) echo "✓ Inserted user progress\n";
+else echo "✗ Progress: " . $conn->error . "\n";
 
 echo "\n=== Showing All Tables ===\n";
 $result = $conn->query("SHOW TABLES");
