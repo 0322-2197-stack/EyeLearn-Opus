@@ -18,5 +18,5 @@ RUN mkdir -p /var/www/html/uploads/images \
 # Expose port (Railway will set $PORT)
 EXPOSE 80
 
-# Start PHP built-in server with router for clean URLs
-CMD php -S 0.0.0.0:${PORT:-80} -t /var/www/html
+# Start PHP built-in server with router for clean URLs and error logging
+CMD php -S 0.0.0.0:${PORT:-80} -t /var/www/html /var/www/html/router.php
