@@ -1,1 +1,5 @@
-<?php header("Location: loginpage.php"); exit(); ?>
+<?php
+// Redirect to login page
+header("Location: loginpage.php");
+exit();
+?>
