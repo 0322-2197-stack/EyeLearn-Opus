@@ -18,25 +18,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || empty($password)) {
         $error = 'Please enter both email and password';
     } else {
-        // Authenticate user
-        $user = authenticateUser($email, $password, $pdo);
+        // Get database connection
+        $pdo = getPDOConnection();
         
-        if ($user) {
-        // Create user session
-            createUserSession($user);
-            
-            // Redirect based on role
-         if ($user['role'] === 'admin') {
-            header('Location: admin/Adashboard.php'); // Admin Dashboard
-            exit;
+        if (!$pdo) {
+            $error = 'Database connection failed. Please try again later.';
         } else {
-            // Always show camera agreement for regular users on each login
-            header('Location: user/camera_agreement.php'); // Redirect to camera agreement every time
-            exit;
-        }
-
-        } else {
-            $error = 'Invalid email or password';
+            // Authenticate user
+            $user = authenticateUser($email, $password, $pdo);
+        
+            if ($user) {
+                // Create user session
+                createUserSession($user);
+                
+                // Redirect based on role
+                if ($user['role'] === 'admin') {
+                    header('Location: admin/Adashboard.php'); // Admin Dashboard
+                    exit;
+                } else {
+                    // Always show camera agreement for regular users on each login
+                    header('Location: user/camera_agreement.php'); // Redirect to camera agreement every time
+                    exit;
+                }
+            } else {
+                $error = 'Invalid email or password';
+            }
         }
     }
 }
