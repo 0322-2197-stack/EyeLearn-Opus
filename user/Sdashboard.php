@@ -44,9 +44,19 @@ if ($result->num_rows > 0) {
 // Add this near the top after database connection
 require_once 'dashboard_analytics.php';
 
-// Get analytics data
-$focus_data = getWeeklyFocusScore($conn, $user_id);
-$comprehension_data = getComprehensionLevel($conn, $user_id);
+// Get analytics data with timeout protection
+$focus_data = ['current_score' => 0, 'previous_score' => 0];
+$comprehension_data = ['level' => 'Beginner', 'percentage' => 50];
+
+try {
+    // Set a shorter timeout for these queries
+    $conn->query("SET SESSION max_execution_time=2000"); // 2 seconds
+    $focus_data = getWeeklyFocusScore($conn, $user_id);
+    $comprehension_data = getComprehensionLevel($conn, $user_id);
+} catch (Exception $e) {
+    // Silently fail and use defaults to prevent page load delay
+    error_log("Dashboard analytics error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

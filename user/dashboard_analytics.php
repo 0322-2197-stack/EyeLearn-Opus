@@ -1,5 +1,11 @@
 <?php
 function getWeeklyFocusScore($conn, $user_id) {
+    // Quick check if table exists
+    $tableCheck = @$conn->query("SHOW TABLES LIKE 'user_study_sessions'");
+    if (!$tableCheck || $tableCheck->num_rows === 0) {
+        return ['current_score' => 0, 'previous_score' => 0];
+    }
+    
     $query = "SELECT 
         AVG(focus_score) as avg_focus,
         AVG(CASE 
@@ -12,6 +18,8 @@ function getWeeklyFocusScore($conn, $user_id) {
         AND date >= DATE_SUB(CURRENT_DATE, INTERVAL 14 DAY)";
     
     $stmt = $conn->prepare($query);
+    if (!$stmt) return ['current_score' => 0, 'previous_score' => 0];
+    
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -24,8 +32,14 @@ function getWeeklyFocusScore($conn, $user_id) {
 }
 
 function getComprehensionLevel($conn, $user_id) {
+    // Quick check if table exists first
+    $tableCheck = @$conn->query("SHOW TABLES LIKE 'quiz_results'");
+    if (!$tableCheck || $tableCheck->num_rows === 0) {
+        return ['level' => 'Beginner', 'percentage' => 50];
+    }
+    
     // Check if completion_date column exists, fall back to checking table structure
-    $checkColumn = $conn->query("SHOW COLUMNS FROM quiz_results LIKE 'completion_date'");
+    $checkColumn = @$conn->query("SHOW COLUMNS FROM quiz_results LIKE 'completion_date'");
     $hasCompletionDate = $checkColumn && $checkColumn->num_rows > 0;
     
     if ($hasCompletionDate) {

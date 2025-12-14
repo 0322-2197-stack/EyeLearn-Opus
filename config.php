@@ -234,6 +234,7 @@ function initializeDatabaseTables($conn) {
  */
 function getDBConnection() {
     static $conn = null;
+    static $initialized = false;
     
     if ($conn === null || !$conn->ping()) {
         $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, (int)DB_PORT);
@@ -243,10 +244,15 @@ function getDBConnection() {
             return null;
         }
         
+        // Set connection timeout to 3 seconds
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
         $conn->set_charset("utf8mb4");
         
-        // Initialize tables for fresh deployments
-        initializeDatabaseTables($conn);
+        // Initialize tables only once per request for fresh deployments
+        if (!$initialized) {
+            initializeDatabaseTables($conn);
+            $initialized = true;
+        }
     }
     
     return $conn;
