@@ -15,6 +15,13 @@ $adminDetails = [
     'gender' => 'Other'
 ];
 
+// Get database connection
+$pdo = getPDOConnection();
+
+if (!$pdo) {
+    die("Database connection failed");
+}
+
 // Check if admin already exists
 if (!userExists($adminDetails['email'], $pdo)) {
     if (createAdminAccount(

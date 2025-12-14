@@ -23,8 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (preg_match('/@admin\.eyelearn$/', $email)) {
         $error = 'Admin accounts cannot be registered through this form';
     } else {
-        // Check if user exists
-        if (userExists($email, $pdo)) {
+        // Get database connection
+        $pdo = getPDOConnection();
+        
+        if (!$pdo) {
+            $error = 'Database connection failed. Please try again later.';
+        } elseif (userExists($email, $pdo)) {
             $error = 'Email is already registered';
         } else {
             // Register user (only as student)

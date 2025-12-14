@@ -237,15 +237,18 @@ function getDBConnection() {
     static $initialized = false;
     
     if ($conn === null || !$conn->ping()) {
-        $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, (int)DB_PORT);
+        // Create mysqli instance and set timeout BEFORE connecting
+        $conn = mysqli_init();
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+        
+        // Now connect
+        @$conn->real_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, (int)DB_PORT);
         
         if ($conn->connect_error) {
             error_log("Database connection failed: " . $conn->connect_error);
             return null;
         }
         
-        // Set connection timeout to 3 seconds
-        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
         $conn->set_charset("utf8mb4");
         
         // Initialize tables only once per request for fresh deployments
