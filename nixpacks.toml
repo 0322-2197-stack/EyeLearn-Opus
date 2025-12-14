@@ -1,9 +1,0 @@
-# Railway Nixpacks configuration for PHP
-[phases.setup]
-nixPkgs = ["php83", "php83Extensions.mysqli", "php83Extensions.pdo_mysql", "php83Extensions.gd", "php83Extensions.mbstring", "php83Extensions.curl"]
-
-[phases.install]
-cmds = ["mkdir -p /app/uploads/images", "chmod -R 777 /app/uploads"]
-
-[start]
-cmd = "php -S 0.0.0.0:$PORT -t ."

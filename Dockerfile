@@ -18,13 +18,26 @@ COPY . /var/www/html/
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+    && chmod -R 755 /var/www/html \
+    && mkdir -p /var/www/html/uploads/images \
+    && chmod -R 777 /var/www/html/uploads
 
-# Expose port 80
-EXPOSE 80
-
-# Configure Apache
+# Configure Apache for Railway (dynamic port support)
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Allow .htaccess overrides
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+
+# Create startup script for dynamic port
+RUN echo '#!/bin/bash\n\
+PORT=${PORT:-80}\n\
+sed -i "s/Listen 80/Listen $PORT/g" /etc/apache2/ports.conf\n\
+sed -i "s/:80/:$PORT/g" /etc/apache2/sites-enabled/*.conf\n\
+apache2-foreground' > /usr/local/bin/start-apache.sh \
+    && chmod +x /usr/local/bin/start-apache.sh
+
+# Expose port (Railway will override with $PORT)
+EXPOSE 80
+
+# Start Apache with dynamic port support
+CMD ["/usr/local/bin/start-apache.sh"]
