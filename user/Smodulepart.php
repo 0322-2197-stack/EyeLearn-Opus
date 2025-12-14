@@ -77,6 +77,16 @@ if (!$selected_module_id || $selected_module_id <= 0) {
     exit;
 }
 
+// Update last_accessed timestamp when user views module
+$update_access_stmt = $conn->prepare("
+    INSERT INTO user_module_progress (user_id, module_id, completed_sections, last_accessed) 
+    VALUES (?, ?, '[]', NOW())
+    ON DUPLICATE KEY UPDATE last_accessed = NOW()
+");
+$update_access_stmt->bind_param("ii", $user_id, $selected_module_id);
+$update_access_stmt->execute();
+$update_access_stmt->close();
+
 // Handle retake requests before loading heavy data
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_retake'])) {
     $contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
@@ -679,9 +689,16 @@ $create_table_sql = "CREATE TABLE IF NOT EXISTS user_module_progress (
     user_id INT NOT NULL,
     module_id INT NOT NULL,
     completed_sections JSON,
+    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY user_module (user_id, module_id)
 )";
 $conn->query($create_table_sql);
+
+// Add last_accessed column if it doesn't exist (for existing tables)
+$check_column = $conn->query("SHOW COLUMNS FROM user_module_progress LIKE 'last_accessed'");
+if ($check_column && $check_column->num_rows === 0) {
+    $conn->query("ALTER TABLE user_module_progress ADD COLUMN last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+}
 
 // Add after other table creations
 $conn->query("CREATE TABLE IF NOT EXISTS module_completions (

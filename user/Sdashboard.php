@@ -1343,13 +1343,18 @@ $comprehension_data = getComprehensionLevel($conn, $user_id);
         }
 
         try {
+            console.log('📊 Fetching analytics data...');
             const response = await fetch('database/get_analytics_data.php?t=' + Date.now());
+            console.log('📊 Response status:', response.status, response.statusText);
             
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('📊 Response error:', errorText);
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText.substring(0, 100)}`);
             }
             
             const result = await response.json();
+            console.log('📊 Analytics data received:', result);
             
             if (!result.success) {
                 throw new Error(result.error || 'Failed to load analytics data');
@@ -1380,6 +1385,11 @@ $comprehension_data = getComprehensionLevel($conn, $user_id);
             loadingElement.classList.add('hidden');
             if (contentElement.classList.contains('hidden')) {
                 errorElement.classList.remove('hidden');
+                // Show specific error message
+                const errorMsg = errorElement.querySelector('p');
+                if (errorMsg) {
+                    errorMsg.textContent = 'Failed to load analytics: ' + (error.message || 'Unknown error');
+                }
             }
             hideSubtleLoading();
         }

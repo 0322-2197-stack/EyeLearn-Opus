@@ -5,14 +5,14 @@ header('Content-Type: application/json');
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
-    echo json_encode(['error' => 'User not authenticated']);
+    echo json_encode(['success' => false, 'error' => 'User not authenticated']);
     exit();
 }
 
 $conn = getDBConnection();
 if (!$conn) {
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed']);
+    echo json_encode(['success' => false, 'error' => 'Database connection failed']);
     exit();
 }
 
@@ -288,7 +288,7 @@ try {
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to fetch analytics data: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => 'Failed to fetch analytics data: ' . $e->getMessage()]);
 }
 
 $conn->close();
