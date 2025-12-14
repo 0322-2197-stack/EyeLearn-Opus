@@ -4,11 +4,12 @@ FROM php:8.1-apache
 # Install PHP extensions
 RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable mysqli
 
-# Disable all MPM modules first
-RUN a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true
-
-# Enable only mpm_prefork
-RUN a2enmod mpm_prefork
+# Fix MPM configuration - remove all MPM modules and keep only prefork
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.* \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.* \
+    && rm -f /etc/apache2/mods-enabled/mpm_prefork.* \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
