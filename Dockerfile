@@ -4,8 +4,10 @@ FROM php:8.1-apache
 # Install PHP extensions
 RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable mysqli
 
-# Disable conflicting MPM modules and enable mpm_prefork
-RUN a2dismod mpm_event mpm_worker || true
+# Disable all MPM modules first
+RUN a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true
+
+# Enable only mpm_prefork
 RUN a2enmod mpm_prefork
 
 # Enable Apache mod_rewrite
